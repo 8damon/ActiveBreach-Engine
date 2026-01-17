@@ -13,3 +13,12 @@
 [submodule "KFD-EDR-Version"]
 	path = KFD-EDR-Version
 	url = https://github.com/8damon/KFD.git
+[submodule "C"]
+	path = C
+	url = git@github.com:8damon/ActiveBreach-C.git
+[submodule "C++"]
+	path = C++
+	url = git@github.com:8damon/ActiveBreach-CPP.git
+[submodule "Rust"]
+	path = Rust
+	url = git@github.com:8damon/ActiveBreach-Rust.git
