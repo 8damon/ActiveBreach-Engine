@@ -1,11 +1,18 @@
-# ACTIVEBREACH-ENGINE (ABE)
+<h1 align="center">ACTIVEBREACH-ENGINE</h1>
+<p align="center"><b>Dual Syscall Execution Framework</b></p>
 
-[![Discord](https://img.shields.io/discord/1240608336005828668?label=TITAN%20Softworks&logo=discord&color=5865F2&style=flat)](https://titansoftwork.com)
-![C](https://img.shields.io/badge/C-00599C?logo=c&logoColor=white&style=flat)
-![C++](https://img.shields.io/badge/C%2B%2B-00599C?logo=c%2B%2B&logoColor=white&style=flat)
-![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white&style=flat)
+<p align="center">
+  <img src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/C-00599C?logo=c&logoColor=white&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/C%2B%2B-00599C?logo=c%2B%2B&logoColor=white&style=for-the-badge" />
+  <a href="https://titansoftwork.com">
+    <img src="https://img.shields.io/discord/1240608336005828668?label=TITAN%20Softworks&logo=discord&color=5865F2&style=for-the-badge" />
+  </a>
+</p>
 
-**ActiveBreach-Engine** now has a article detailing it's internals [here](https://titansoftwork.com/blog/activebreach/)
+<p align="center">
+  <a href="https://titansoftwork.com/blog/activebreach/">Read the Technical Article</a>
+</p>
 
 **ActiveBreach-Engine (ABE)** is a Windows execution capability platform designed to support authorized adversary emulation, detection validation, and low-level security research in modern EDR-protected environments.
 
