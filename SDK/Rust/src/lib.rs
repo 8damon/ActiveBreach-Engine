@@ -33,13 +33,15 @@ pub use internal::antibreach::{ViolationHandler, ViolationType};
 
 use crate::internal::diagnostics::*;
 use crate::internal::dispatch::{AbFire, G_READY};
-use core::ffi::c_void;
+use core::ffi::{c_char, c_void};
 
 use windows::Win32::System::Threading::{WaitOnAddress, WakeByAddressSingle, INFINITE};
 
 type BOOL = i32;
 
+use std::ffi::CStr;
 use std::ptr;
+use std::sync::Mutex;
 
 /// Returns the number of AntiBreach-style violations detected by the Rust dispatcher.
 pub fn ab_violation_count() -> u32 {
@@ -145,4 +147,93 @@ pub unsafe fn ab_call(name: &str, args: &[usize]) -> usize {
     }
 
     AbFire(name, args)
+}
+
+pub type ViolationHandlerFFI = extern "C" fn(u32);
+
+static VIOLATION_HANDLER_FFI: Mutex<Option<ViolationHandlerFFI>> = Mutex::new(None);
+
+fn violation_type_to_u32(kind: ViolationType) -> u32 {
+    match kind {
+        ViolationType::TebMismatch => 0,
+        ViolationType::SuspiciousCaller => 1,
+        ViolationType::DebuggerDetected => 2,
+        ViolationType::HardwareBreakpoint => 3,
+    }
+}
+
+fn ffi_violation_bridge(kind: ViolationType) {
+    let handler = {
+        let guard = VIOLATION_HANDLER_FFI.lock().unwrap();
+        *guard
+    };
+
+    if let Some(cb) = handler {
+        cb(violation_type_to_u32(kind));
+    }
+}
+
+#[export_name = "ab_call"]
+pub unsafe extern "C" fn ab_call_ffi(
+    name: *const c_char,
+    args: *const usize,
+    args_len: usize,
+) -> usize {
+    if name.is_null() {
+        return AbErr(ABError::DispatchNameTooLong) as usize;
+    }
+
+    let c_str = match CStr::from_ptr(name).to_str() {
+        Ok(s) => s,
+        Err(_) => return AbErr(ABError::DispatchNameTooLong) as usize,
+    };
+
+    if args_len > 16 {
+        return AbErr(ABError::DispatchArgTooMany) as usize;
+    }
+
+    let args_slice = if args_len == 0 {
+        &[]
+    } else if args.is_null() {
+        return AbErr(ABError::DispatchArgTooMany) as usize;
+    } else {
+        std::slice::from_raw_parts(args, args_len)
+    };
+
+    crate::ab_call(c_str, args_slice)
+}
+
+#[export_name = "ab_violation_count"]
+pub extern "C" fn ab_violation_count_ffi() -> u32 {
+    crate::ab_violation_count()
+}
+
+#[export_name = "ab_clear_violation_handler"]
+pub extern "C" fn ab_clear_violation_handler_ffi() {
+    {
+        let mut guard = VIOLATION_HANDLER_FFI.lock().unwrap();
+        *guard = None;
+    }
+    crate::ab_clear_violation_handler()
+}
+
+#[export_name = "ab_set_violation_handler"]
+pub extern "C" fn ab_set_violation_handler_ffi(handler: Option<ViolationHandlerFFI>) {
+    if let Some(h) = handler {
+        let mut guard = VIOLATION_HANDLER_FFI.lock().unwrap();
+        *guard = Some(h);
+        crate::ab_set_violation_handler(ffi_violation_bridge);
+    } else {
+        let mut guard = VIOLATION_HANDLER_FFI.lock().unwrap();
+        *guard = None;
+        crate::ab_clear_violation_handler();
+    }
+}
+
+#[export_name = "activebreach_launch"]
+pub unsafe extern "C" fn activebreach_launch_ffi() -> u32 {
+    match crate::activebreach_launch() {
+        Ok(_) => 0,
+        Err(code) => code,
+    }
 }

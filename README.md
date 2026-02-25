@@ -24,7 +24,7 @@ Modern defensive products increasingly rely on user-mode instrumentation due to 
 
 When the CPU executes the `syscall` instruction, it transitions execution into a privileged kernel-mode context. This context switch itself is not directly observable by user-mode defensive products. API hooking, by contrast, relies on redirecting execution prior to the syscall, which executes the defensive product’s instrumentation routine. From an adversary emulation perspective, executing that instrumentation is undesirable.
 
-![Hooking Diagram](./Diagram/AB.png)
+![Hooking Diagram](./Diagram/AB_DIRECT_SYSCALL.png)
 
 This is where **ABE** comes in. **ABE** builds an in-process ring of syscall stubs, encrypts them, and sets up a specialized dispatcher to decrypt and execute these syscalls. All execution is managed by ABE’s context-controlled dispatcher thread. This results in a controlled execution environment where system calls can be dispatched without user-mode monitoring or external product interference.
 
@@ -39,6 +39,37 @@ For ease of integration, **ABE** is provided in three trims: C, C++, and Rust. R
 Primarily due to integration complexity. Linking cryptographic libraries and using Windows internal structures in C++ introduces development friction and unnecessary complexity. The goal of **ABE** is ease of integration, which means no external dependencies. As a result, the C and C++ versions are provided as single-include header files (`.h`).
 
 The Rust version includes exclusive features such as build-time encrypted stub templates, a custom stub ring allocator, and TLS callbacks.
+
+## RUST INTEGRATION & FFI
+
+The Rust SDK is modular and portable:
+
+- Native Rust integration (path dependency or crate dependency)
+- C ABI integration via `activebreach.dll` (runtime loading or import-lib linking)
+- Static linking via `activebreach.lib`
+
+This C ABI surface is intentionally language-agnostic and can be consumed from C/C++, C#, Zig, Nim, Odin, D, Python (`ctypes`/`cffi`), and similar FFI-capable runtimes.
+
+Build outputs from `SDK/Rust/target/{debug,release}` include:
+- `libactivebreach.rlib` (Rust-to-Rust)
+- `activebreach.dll` (shared library, C ABI)
+- `activebreach.dll.lib` (MSVC import library for the DLL)
+- `activebreach.lib` (static library)
+
+C ABI header:
+- `SDK/Rust/include/activebreach.h`
+
+Exported symbols:
+- `activebreach_launch`
+- `ab_call`
+- `ab_violation_count`
+- `ab_set_violation_handler`
+- `ab_clear_violation_handler`
+
+Integration models on Windows:
+1. DLL only (runtime dynamic loading with `LoadLibrary`/`GetProcAddress`)
+2. DLL + import LIB (implicit link with `activebreach.dll.lib`)
+3. Static LIB (`activebreach.lib`, no runtime DLL dependency for this library)
 
 ## USAGE
 

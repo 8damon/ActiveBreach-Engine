@@ -42,7 +42,27 @@ cd SDK\Rust
 cargo build
 cargo build --release
 ```
-Output: `SDK\Rust\target\{debug,release}\libactivebreach.rlib`.
+Primary outputs (from `target\{debug,release}`):
+- `libactivebreach.rlib` (Rust-to-Rust linking)
+- `activebreach.dll` (C ABI shared library)
+- `activebreach.dll.lib` (MSVC import library for the DLL)
+- `activebreach.lib` (static library)
+
+Build only library artifacts:
+```bash
+cd SDK\Rust
+cargo build --release --lib
+```
+
+Rust C ABI header:
+- `SDK\Rust\include\activebreach.h`
+
+Exported C ABI symbols:
+- `uint32_t activebreach_launch(void);`
+- `size_t ab_call(const char* name, const size_t* args, size_t args_len);`
+- `uint32_t ab_violation_count(void);`
+- `void ab_set_violation_handler(ViolationHandler handler);`
+- `void ab_clear_violation_handler(void);`
 
 #### Rust Feature Flags
 Feature flags live in `SDK/Rust/Cargo.toml`:
@@ -146,6 +166,53 @@ If built with `--features long_sleep`, you can configure the idle timeout:
 #[cfg(feature = "long_sleep")]
 activebreach::ab_set_long_sleep_idle_ms(60_000);
 ```
+
+#### Rust FFI (DLL/LIB integration)
+For non-Rust consumers, use the Rust C ABI build outputs. This is language-agnostic and works with C/C++, C#, Zig, Nim, Odin, D, Python (`ctypes`/`cffi`), and similar FFI-capable runtimes.
+
+1. Build release artifacts:
+```bash
+cd SDK\Rust
+cargo build --release --lib
+```
+2. Add include path to `SDK\Rust\include` and include `activebreach.h`.
+3. Choose one integration mode:
+- DLL mode (runtime dynamic loading, no import LIB required):
+  - Ship `SDK\Rust\target\release\activebreach.dll`.
+  - Resolve functions at runtime (`LoadLibrary` + `GetProcAddress`).
+- DLL mode (implicit link at build time):
+  - Link against `SDK\Rust\target\release\activebreach.dll.lib` (import library).
+  - Ship `SDK\Rust\target\release\activebreach.dll` next to your executable (or on `PATH`).
+- Static mode:
+  - Link against `SDK\Rust\target\release\activebreach.lib` (code is compiled into your binary; no DLL required for this library).
+
+Minimal C example (`activebreach.dll` via import library):
+```c
+#include "activebreach.h"
+#include <stdint.h>
+
+int main(void) {
+    uint32_t rc = activebreach_launch();
+    if (rc != 0) return (int)rc;
+
+    size_t out = ab_call("NtGetCurrentProcessorNumber", NULL, 0);
+    (void)out;
+    return 0;
+}
+```
+
+Notes:
+- `activebreach.dll.lib` is an import library (link helper for the DLL), not a static build of the code.
+- `activebreach.lib` is the static library output.
+- Portability/modularity model:
+  - Keep ActiveBreach isolated behind a stable C ABI (`include/activebreach.h`).
+  - Consumers in other languages can swap between runtime-loaded DLL and linked integration without changing exported symbol names.
+
+Violation callback codes passed to `ViolationHandler`:
+- `AB_VIOLATION_TEB_MISMATCH`
+- `AB_VIOLATION_SUSPICIOUS_CALLER`
+- `AB_VIOLATION_DEBUGGER_DETECTED`
+- `AB_VIOLATION_HARDWARE_BREAKPOINT`
 
 ## Notes / Limits
 - Syscall names must match exported `Nt*` names (max 63 bytes).
