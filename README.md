@@ -35,8 +35,6 @@ When the CPU executes the `syscall` instruction, it transitions execution into a
 
 This is where **ABE** comes in. **ABE** builds an in-process ring of syscall stubs, encrypts them, and sets up a specialized dispatcher to decrypt and execute these syscalls. All execution is managed by ABE’s context-controlled dispatcher thread. This results in a controlled execution environment where system calls can be dispatched without user-mode monitoring or external product interference.
 
-For a full technical outline, see [Technical Overview](./TECH.md)
-
 ## DEVELOPMENT
 
 For ease of integration, **ABE** is provided in three trims: C, C++, and Rust. Rust is the most technically advanced implementation, while C++ offers an integrated debugger.
