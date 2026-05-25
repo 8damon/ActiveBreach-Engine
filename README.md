@@ -1,5 +1,5 @@
 <h1 align="center">ACTIVEBREACH-ENGINE</h1>
-<p align="center"><b>Dual Syscall Execution Framework</b></p>
+<p align="center"><b>Protected Dual Syscall Execution Framework</b></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white&style=for-the-badge" />
@@ -8,31 +8,26 @@
 </p>
 
 <p align="center">
-  <a href="https://titansoftwork.com/blog/activebreach/">Read the Technical Article</a>
+  <a href="https://titansoftwork.com/insight/syscall_execution/">Read the Technical Article</a>
 </p>
 
-**ActiveBreach-Engine (ABE)** is a Windows execution capability platform designed to support authorized adversary emulation, detection validation, and low-level security research in modern EDR-protected environments.
+**ActiveBreach-Engine (ABE)** is a Windows execution capability platform designed to execute secured & direct system calls in heavily instrumented environments, protecting your process from external attackers and process hooking.
 
-**ABE** provides a controlled, fully dynamic mechanism for executing Windows system calls without reliance on user-mode API invocation or resident `ntdll.dll` code paths, enabling security teams to evaluate detection coverage, telemetry fidelity, and behavioral assumptions made by modern EDR, XDR, and security monitoring solutions.
+**ABE** provides a controlled, fully dynamic framework for executing system calls without reliance on user-mode API invocation or resident `ntdll.dll` code paths, while also protecting said syscall stubs from hijacking or modification by an external attacker.
 
-This project is architected as a successor-class capability to historical syscall research tooling (e.g., SysWhispers and Hell’s Gate), addressing the limitations, static assumptions, and detectability issues inherent in earlier designs.
+This project was put together as a successor-class capability to historical syscall research tooling (e.g., SysWhispers and Hell’s Gate), addressing the limitations, static assumptions, and detectability issues inherent in earlier designs.
 
 ## SCOPE
 
-Modern defensive products increasingly rely on user-mode instrumentation due to Microsoft locking down the kernel. This instrumentation comes in many forms, such as *API hooking* and *behavioral inference*, to detect malicious activity. While effective, these approaches introduce blind spots at the user-to-kernel boundary.
+Modern debugging & instrumentation tools rely on *API hooking* and *breakpoints*, possibly the easiest way to observe a processes behaviour is by simply setting breakpoints on codepaths you're interested in. There's an endless cat and mouse chase between anti-debug, control-flow obfuscation, indirection, lifting etc... Activebreach is focused on preventing the hook itself from exposing your progrma.
 
-**ABE** targets what defensive products cannot control: the system itself. A common approach is for products to set *API hooks* on `Nt*` functions, which are exported by `ntdll.dll` and contain the `syscall` instruction. The `syscall` instruction is important for two reasons:
+The most common API hooks are on ``ntdll.dll``, which is the system call boundary in userland which every system-call requiring API (eg; ``OpenProcess``) eventually hits. This is of course the perfect place for a hook, luckily these ``ntdll.dll`` stubs are also extremely generic and easily copyable.
 
-1. It is not instrumentable by user-mode products  
-2. It performs a context switch  
-
-When the CPU executes the `syscall` instruction, it transitions execution into a privileged kernel-mode context. This context switch itself is not directly observable by user-mode defensive products. API hooking, by contrast, relies on redirecting execution prior to the syscall, which executes the defensive product’s instrumentation routine. From an adversary emulation perspective, executing that instrumentation is undesirable.
+**ABE** builds upon this, building its own protected, encrypted & optimized stub rings that it uses to execute secured system calls, without any sort of reliance on ``ntdll.dll`` or other DLL's, **ABE** operates assuming everything in the environment is hostile, using its own dedicated dispatcher thread, and multiple anti-debug & protection mechanisms to prevent *your* system calls.
 
 ![Hooking Diagram](./Diagram/AB_DIRECT_SYSCALL.png)
 
-This is where **ABE** comes in. **ABE** builds an in-process ring of syscall stubs, encrypts them, and sets up a specialized dispatcher to decrypt and execute these syscalls. All execution is managed by ABE’s context-controlled dispatcher thread. This results in a controlled execution environment where system calls can be dispatched without user-mode monitoring or external product interference.
-
-## DEVELOPMENT
+## USE
 
 For ease of integration, **ABE** is provided in three trims: C, C++, and Rust. Rust is the most technically advanced implementation, while C++ offers an integrated debugger.
 
@@ -96,11 +91,6 @@ Example builds:
   - `cargo build --features long_sleep`
 - Prefer loaded-NTDLL prologues when intact:
   - `cargo build --features ntdll_backend`
-
-## Disclaimer
-
-This tool is provided for **educational and authorized security research only**.  
-Unauthorized use may violate applicable laws. The authors and contributors assume no liability.
 
 ## License
 
