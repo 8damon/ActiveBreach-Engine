@@ -696,7 +696,6 @@ namespace ActiveBreach {
      *
      * - `_decrypt_stub`: Decrypts a 16-byte syscall stub using AES-style XOR, with AVX2 acceleration if available.
      * - `has_avx2`: Detects CPU support for AVX2.
-     * - `hash`: Computes a fast, entropy-mixed hash over function names to avoid string-based lookups.
      * - `decstr`: Reverses and decodes obfuscated strings using a multi-key bitshift and XOR transformation.
      */
     namespace Crypto {
@@ -724,39 +723,6 @@ namespace ActiveBreach {
             else {
                 for (int i = 0; i < 16; ++i)
                     out[i] = enc[i] ^ key[i];
-            }
-        }
-
-        __declspec(noinline) uint64_t hash(const char* str) {
-            const size_t len = strlen(str);
-            uint64_t     seed = 0xDEADC0DECAFEBEEF;
-            if (has_avx2() && len >= 32) {
-                __m256i acc = _mm256_set1_epi64x(seed);
-                for (size_t i = 0; i + 32 <= len; i += 32) {
-                    __m256i chunk = _mm256_loadu_si256((__m256i*)(str + i));
-                    acc = _mm256_xor_si256(acc, chunk);
-                    acc = _mm256_add_epi64(acc, _mm256_shuffle_epi8(chunk, _mm256_set1_epi8(0x1B)));
-                    acc = _mm256_or_si256(acc, _mm256_slli_epi64(acc, 5));
-                    acc = _mm256_sub_epi64(acc, _mm256_srli_epi64(acc, 3));
-                }
-                uint64_t h[4];
-                _mm256_storeu_si256((__m256i*)h, acc);
-                return h[0] ^ h[1] ^ h[2] ^ h[3] ^ seed;
-            }
-            else {
-                __m128i acc = _mm_set1_epi64x(seed);
-                for (size_t i = 0; i + 16 <= len; i += 16) {
-                    __m128i chunk = _mm_loadu_si128((__m128i*)(str + i));
-                    acc = _mm_xor_si128(acc, chunk);
-                    acc = _mm_or_si128(acc, _mm_slli_epi64(acc, 3));
-                    acc = _mm_add_epi64(acc, _mm_srli_epi64(acc, 2));
-                    acc = _mm_shuffle_epi8(acc, _mm_set_epi8(
-                        1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14
-                    ));
-                }
-                uint64_t h[2];
-                _mm_storeu_si128((__m128i*)h, acc);
-                return h[0] ^ h[1] ^ seed;
             }
         }
 
@@ -871,7 +837,7 @@ namespace ActiveBreach {
      *   Uses SIMD comparison to verify valid syscall export signatures.
      * - `ExtractSyscalls`: Top-level function that loads and parses the image, returning a name -> SSN map.
      *
-     * Combined with `Crypto::hash`, this allows efficient stub lookup during runtime without relying on Windows exports.
+     * The extracted names provide collision-free stub lookup without relying on Windows exports.
      */
     namespace Parser {
         std::unordered_map<std::string, uint32_t> Exfil(void* mapped_base, size_t image_size) {
@@ -989,9 +955,8 @@ namespace ActiveBreach {
 
                 uint8_t* cursor = _mem;
                 for (const auto& [name, ssn] : syscall_table) {
-                    const uint64_t hash = Crypto::hash(name.c_str());
                     cursor = EmitStubToPool(cursor, ssn);
-                    _map[hash] = cursor - STUB_SIZE;
+                    _map[name] = cursor - STUB_SIZE;
                 }
 
                 DWORD old = 0;
@@ -999,8 +964,7 @@ namespace ActiveBreach {
             }
 
             void* LookupStub(const char* name) const {
-                const uint64_t hash = Crypto::hash(name);
-                const auto it = _map.find(hash);
+                const auto it = _map.find(name);
                 return (it != _map.end()) ? it->second : nullptr;
             }
 
@@ -1015,7 +979,7 @@ namespace ActiveBreach {
 
             uint8_t* _mem = nullptr;
             size_t _size = 0;
-            std::unordered_map<uint64_t, void*> _map;
+            std::unordered_map<std::string, void*> _map;
         };
 
         inline void* CreateEphemeralStub(uint32_t ssn, DWORD prot = PAGE_EXECUTE_READ) {
@@ -1178,14 +1142,10 @@ extern "C" void ActiveBreach_launch() {
         if (!Dispatch::g_init_event)
             throw std::runtime_error("init event failed");
 
-        constexpr uint64_t h_cte = 0xbcc7c24bdcfe64d3;  // NtCreateThreadEx
-        constexpr uint64_t h_sit = 0xee9ec0b2e2fe64f5;  // NtSetInformationThread
-
         uint32_t ssn_cte = 0, ssn_sit = 0;
         for (const auto& [name, ssn] : table) {
-            const uint64_t hash = Crypto::hash(name.c_str());
-            if (hash == h_cte) ssn_cte = ssn;
-            else if (hash == h_sit) ssn_sit = ssn;
+            if (name == "NtCreateThreadEx") ssn_cte = ssn;
+            else if (name == "NtSetInformationThread") ssn_sit = ssn;
         }
 
         if (!ssn_cte || !ssn_sit)
