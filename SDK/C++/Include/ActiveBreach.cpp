@@ -594,9 +594,16 @@ namespace ActiveBreachDebugger {
                 printed = true;
             }
 
-            // Null or sentinel
-            if (val == 0 || val == (ULONG_PTR)-1) {
-                printf("  (null/invalid)");
+            // Null pointers and scalar zero have different meanings.
+            if (val == 0) {
+                if (type == ArgType::Pointer)
+                    printf("  (null)");
+                else if (!printed)
+                    printf("  (int: 0)");
+                printed = true;
+            }
+            else if (val == (ULONG_PTR)-1) {
+                printf("  (sentinel/pseudo-handle)");
                 printed = true;
             }
             else if (val == 0xCCCCCCCCCCCCCCCCULL || val == 0xDDDDDDDDDDDDDDDDULL) {
@@ -628,26 +635,22 @@ namespace ActiveBreachDebugger {
                 }
             }
 
-            if (i >= 4 && (val & 0xF) != 0)
-                printf("  [!] Stack arg unaligned");
-
             printf("\n");
         }
 
         if (arg_count > 0) {
             const char* regs[] = { "RCX", "RDX", "R8", "R9" };
-            printf("\n  Register Mapping:\n");
+            printf("\n  Dispatch ABI Mapping:\n");
             for (size_t i = 0; i < arg_count && i < 4; ++i)
-                printf("    -> %-3s = 0x%016llX\n", regs[i], (unsigned long long)args[i]);
+                printf("    -> %-3s <= 0x%016llX\n", regs[i], (unsigned long long)args[i]);
 
             if (arg_count > 4) {
-                printf("    -> Remaining args passed via shadow stack\n");
-                printf("  Shadow Stack Args:\n");
-
-                void* shadow_base = _AddressOfReturnAddress();
+                printf("    -> Remaining args use stack slots at syscall-stub entry\n");
+                printf("  Stack Argument Mapping:\n");
                 for (size_t i = 4; i < arg_count && i < 16; ++i) {
-                    ULONG_PTR* shadow = ((ULONG_PTR*)shadow_base) + (i - 4);
-                    printf("    [%2zu] @%p => 0x%016llX\n", i, shadow, *shadow);
+                    const size_t offset = 0x28 + ((i - 4) * sizeof(ULONG_PTR));
+                    printf("    [%2zu] [RSP+0x%02zX] <= 0x%016llX\n",
+                        i, offset, (unsigned long long)args[i]);
                 }
             }
         }
@@ -660,8 +663,8 @@ namespace ActiveBreachDebugger {
             }
         }
 
-        printf("  Stack Ptr   : %p\n", _AddressOfReturnAddress());
-        printf("  Return Addr : %p\n", _ReturnAddress());
+        printf("  Tracer Stack Ptr   : %p\n", _AddressOfReturnAddress());
+        printf("  Tracer Return Addr : %p\n", _ReturnAddress());
     }
 
     inline void Return(const char* syscallName, NTSTATUS status) {
