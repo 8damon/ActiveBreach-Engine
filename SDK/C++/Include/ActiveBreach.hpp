@@ -4,7 +4,7 @@
  *  Project:      ActiveBreach
  *  File:         ActiveBreach.hpp
  *  Author:       8damon
- *  Organization: TITAN Softwork Solutions
+ *  Organization: RYFTENIUS
  *  Inspired by:  MDSEC Research
  *
  *  Description:
@@ -13,13 +13,13 @@
  *      syscall stubs for indirect execution.
  *
  *  License:      Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
- *  Copyright:    (C) 2025 TITAN Softwork Solutions. All rights reserved.
+ *  Copyright:    (C) 2025 RYFTENIUS. All rights reserved.
  *
  *  Licensing Terms:
  *  ----------------------------------------------------------------------------------
  *   - You are free to use, modify, and share this software.
  *   - Commercial use is strictly prohibited.
- *   - Proper credit must be given to TITAN Softwork Solutions.
+ *   - Proper credit must be given to RYFTENIUS.
  *   - Modifications must be clearly documented.
  *   - This software is provided "as-is" without warranties of any kind.
  *

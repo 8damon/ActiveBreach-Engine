@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://titansoftwork.com/insight/syscall_execution/">Read the Technical Article</a>
+  <a href="https://ryftenius.com/insight/syscall_execution/">Read the Technical Article</a>
 </p>
 
 **ActiveBreach-Engine (ABE)** is a Windows execution capability platform designed to execute secured & direct system calls in heavily instrumented environments, protecting your process from external attackers and process hooking.
@@ -94,7 +94,7 @@ Example builds:
 
 ## License
 
-Copyright © 2026 TITAN Softwork Solutions
+Copyright © 2026 RYFTENIUS
 
 Licensed under the Apache License, Version 2.0 (the "License") **with the Commons Clause License Condition v1.0**.
 

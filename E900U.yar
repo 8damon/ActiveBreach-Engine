@@ -4,7 +4,7 @@
   ============================================================================
 
   Author
-    - TITAN Softwork Solutions
+    - RYFTENIUS
 */
 
 import "pe"

@@ -2,7 +2,7 @@
 name = "activebreach"
 version = "0.2.0"
 edition = "2021"
-authors = ["8damon", "TITAN Softwork Solutions"]
+authors = ["8damon", "RYFTENIUS"]
 repository = "https://github.com/8damon/ActiveBreach-Engine"
 homepage = "https://github.com/8damon/ActiveBreach-Engine"
 readme = "README.md"
